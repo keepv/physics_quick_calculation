@@ -1,0 +1,51 @@
+# 工作流的名称
+name: physics_quick_calculation
+
+# 定义工作流触发的事件
+on:
+   # 当在main分支上进行push操作时触发
+   push:
+     branches: [ "main" ]
+   # 当在main分支上创建pull request时触发
+   pull_request:
+     branches: [ "main" ]
+
+# 定义工作流中的任务
+jobs:
+   build:
+     # 指定运行工作流的环境，这里使用最新的Ubuntu环境
+     runs-on: [ubuntu-latest, windows-latest, macos-latest]
+     # 定义一个策略，用于在多个Python版本上运行任务
+     strategy:
+       # 设置为false，表示即使某个版本的步骤失败，也会继续执行其他版本的步骤
+       fail-fast: false
+       # 定义一个矩阵，包含多个Python版本
+       matrix:
+         python-version: ["3.7","3.8","3.9", "3.10", "3.11","3.12"]
+
+     # 定义工作流的具体步骤
+     steps:
+     # 第一步：检出代码仓库
+     - uses: actions/checkout@v4
+     # 第二步：根据矩阵中定义的Python版本设置Python环境
+     - name: Set up Python ${{ matrix.python-version }}
+       uses: actions/setup-python@v3
+       with:
+         python-version: ${{ matrix.python-version }}
+     # 第三步：安装项目依赖
+     - name: Install dependencies
+       run: |
+         python -m pip install --upgrade pip
+         python -m pip install flake8 pytest
+         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+     # 第四步：使用flake8进行代码风格检查
+     - name: Lint with flake8
+       run: |
+         # 检查Python语法错误或未定义的名称，并停止构建
+         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+         # 以警告形式处理所有错误，设置最大复杂度和最大行长度
+         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+     # 第五步：使用pytest进行测试
+     - name: Test with pytest
+       run: |
+         pytest
